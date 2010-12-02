@@ -27,8 +27,31 @@ abstract class midgardmvc_helper_attachmentserver_controllers_base
         }
 
         $blob = new midgard_blob($att);
-        
+        $stream = $blob->get_handler('rb');
+        $mtime = $att->metadata->revised->format('r');
+
+        // Generate ETag
+        $hash = hash_init('sha1');
+        hash_update_stream($hash, $stream);
+        hash_update($hash, $mtime);
+        $etag = hash_final($hash);
+        fclose($stream);
+
+        if (   isset($_SERVER['HTTP_IF_NONE_MATCH'])
+            && $etag == $_SERVER['HTTP_IF_NONE_MATCH'])
+        {
+            throw new midgardmvc_exception_httperror("File has not changed", 304);
+        }
+
+        if (   isset($_SERVER['HTTP_IF_MODIFIED_SINCE'])
+            && $mtime == $_SERVER['HTTP_IF_MODIFIED_SINCE'])
+        {
+            throw new midgardmvc_exception_httperror("Not modified since {$mtime}", 304);
+        }
+
         midgardmvc_core::get_instance()->dispatcher->header('Content-type: '.$att->mimetype);
+        midgardmvc_core::get_instance()->dispatcher->header('ETag: '.$etag);
+        midgardmvc_core::get_instance()->dispatcher->header('Last-Modified: '.$mtime);
 
         /**
           * If X-Sendfile support is enabled just send correct headers
