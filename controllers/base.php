@@ -29,7 +29,6 @@ abstract class midgardmvc_helper_attachmentserver_controllers_base
         $blob = new midgard_blob($att);
         
         midgardmvc_core::get_instance()->dispatcher->header('Content-type: '.$att->mimetype);
-midgardmvc_core::get_instance()->dispatcher->header("Content-Length: " . $att->metadata->size);
 
         /**
           * If X-Sendfile support is enabled just send correct headers
