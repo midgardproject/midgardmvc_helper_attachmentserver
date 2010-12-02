@@ -1,5 +1,8 @@
 version: 0.0.1
 process_injector: midgardmvc_helper_attachmentserver_injector
+requires_pear:
+    ImageConversion
+        channel: components.ez.no
 routes:
     attachmentserver_simple:
         path: '/mgd:attachment/{$guid}/{$filename}'
