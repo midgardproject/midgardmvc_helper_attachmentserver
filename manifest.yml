@@ -6,3 +6,8 @@ routes:
         controller: midgardmvc_helper_attachmentserver_controllers_simple
         action: file
         root_only: true
+    attachmentserver_variant:
+        path: '/mgd:attachment/{$guid}/{$variant}/{$filename}'
+        controller: midgardmvc_helper_attachmentserver_controllers_variant
+        action: variant
+        root_only: true
