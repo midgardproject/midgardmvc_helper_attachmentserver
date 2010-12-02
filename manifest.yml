@@ -1,0 +1,8 @@
+version: 0.0.1
+process_injector: midgardmvc_helper_attachmentserver_injector
+routes:
+    attachmentserver_simple:
+        path: '/mgd:attachment/{$guid}/{$filename}'
+        controller: midgardmvc_helper_attachmentserver_controllers_simple
+        action: file
+        root_only: true
