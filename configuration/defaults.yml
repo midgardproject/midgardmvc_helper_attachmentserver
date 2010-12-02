@@ -1,5 +1,0 @@
-attachmentserver_variants:
-    thumbnail:
-        scale:
-            width: 150
-            height: 150
