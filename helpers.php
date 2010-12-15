@@ -129,5 +129,52 @@ class midgardmvc_helper_attachmentserver_helpers
         midgardmvc_core::get_instance()->authorization->leave_sudo();
         return $attachment;
     }
+
+    /**
+     * Gets an attachment for named location in object
+     *
+     * @param mixed $parent either midgard_object object or guid
+     * @param string $location the locationname
+     * @return object or boolean false
+     */
+    public static function get_by_locationname($parent, string $location)
+    {
+        $qb = midgardmvc_helper_attachmentserver_attachment::new_query_builder();
+        $qb->add_constraint('locationname', '=', $location);
+        if (is_object($parent))
+        {
+            $qb->add_constraint('parentguid', '=', $parent->guid);
+        }
+        else
+        {
+            $qb->add_constraint('parentguid', '=', $parent);
+        }
+        $qb->set_limit(1);
+        $attachments = $qb->execute();
+        unset($qb);
+        if (empty($attachments))
+        {
+            return false;
+        }
+        return $attachments[0];
+    }
+
+    /**
+     * Gets an attachment for named location in object
+     *
+     * @param mixed $parent either midgard_object object or guid
+     * @param string $location the locationname
+     * @return object or boolean false
+     */
+    public static function get_variant_by_locationname($parent, string $location, string $variant)
+    {
+        $parent_att = midgardmvc_helper_attachmentserver_helpers::get_by_locationname($parent, $location);
+        if (!$parent_att)
+        {
+            return false;
+        }
+        return midgardmvc_helper_attachmentserver_helpers::get_variant($parent_att, $variant);
+    }
+
 }
 ?>
