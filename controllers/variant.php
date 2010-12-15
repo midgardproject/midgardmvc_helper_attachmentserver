@@ -32,72 +32,20 @@ class midgardmvc_helper_attachmentserver_controllers_variant extends midgardmvc_
         }
 
         $original_attachment = new midgard_attachment($args['guid']);
-
-        // Check whether the variant already exists
-        $qb = midgard_attachment::new_query_builder();
-        $qb->add_constraint('name', '=', $args['variant']);
-        $qb->add_constraint('parentguid', '=', $original_attachment->guid);
-        $variants = $qb->execute();
-        if (count($variants) > 0)
+        $variant = midgardmvc_helper_attachmentserver_helpers::get_variant($original_attachment, $args['variant']);
+        if ($variant)
         {
-            // Variant found in cache, check timestamp and serve as needed
-            $variant = $variants[0];
-            if ($variant->metadata->revised > $original_attachment->metadata->revised)
+            if (!midgardmvc_helper_attachmentserver_helpers::variant_is_fresh($variant, $original_attachment))
             {
-                $this->serve_attachment($variants[0]);
+                $variant = midgardmvc_helper_attachmentserver_helpers::generate_variant($original_attachment, $args['variant'], true);
             }
-
-            // Stale variant, delete and go to regeneration
-            midgardmvc_core::get_instance()->authorization->enter_sudo('midgardmvc_helper_attachmentserver');
-            $variants[0]->delete();
-            midgardmvc_core::get_instance()->authorization->leave_sudo();
         }
-
-        $variant = $this->generate_variant($original_attachment, $args['variant']);
-        $this->serve_attachment($variant);
-    }
-
-    private function generate_variant(midgard_attachment $original, $variant)
-    {
-        midgardmvc_core::get_instance()->component->load_library('ImageConverter');
-
-        $settings = new ezcImageConverterSettings
-        (
-            array
-            (
-                new ezcImageHandlerSettings( 'ImageMagick', 'ezcImageImagemagickHandler' ),
-            )
-        );
-        $converter = new ezcImageConverter($settings);
-
-        $filters = array();
-        foreach ($this->variants[$variant] as $filter => $options)
+        else
         {
-            $filters[] = new ezcImageFilter($filter, $options);
+            $variant = midgardmvc_helper_attachmentserver_helpers::generate_variant($original_attachment, $args['variant']);
         }
-        $converter->createTransformation($variant, $filters, array($original->mimetype));
 
-        $original_blob = new midgard_blob($original);
-        $transformed_image = tempnam(sys_get_temp_dir(), "{$original->guid}_{$variant}");
-        $converter->transform
-        (
-            $variant,
-            $original_blob->get_path(), 
-            $transformed_image 
-        );
-
-        midgardmvc_core::get_instance()->authorization->enter_sudo('midgardmvc_helper_attachmentserver');
-
-        // Create a child attachment and copy the transformed image there
-        $attachment = $original->create_attachment($variant, $original->title, $original->mimetype);
-        $attachment_blob = new midgard_blob($attachment);
-        $handler = $attachment_blob->get_handler();
-        fwrite($handler, file_get_contents($transformed_image));
-        fclose($handler);
-        $attachment->update();
-
-        midgardmvc_core::get_instance()->authorization->leave_sudo();
-        return $attachment;
+        $this->serve_attachment($variant);
     }
 }
 ?>
