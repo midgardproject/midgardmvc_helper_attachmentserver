@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Schema xmlns="http://www.midgard-project.org/repligard/1.4">
+    <type name="midgardmvc_helper_attachmentserver_attachment" extends="midgard_attachment">
+        <property name="locationname" type="string" index="yes">
+            <description>named location for the attachment like "main_lift_image" or "right_banner_image"</description>
+        </property>
+    </type>
+</Schema>
