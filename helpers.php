@@ -274,7 +274,7 @@ class midgardmvc_helper_attachmentserver_helpers
      */
     public static function render_location_placeholder($parent, string $location, $variant = null)
     {
-        $url = midgardmvc_core::get_instance()->configuration->attachmentserver_placeholder_url;
+        $url = str_replace('__MIDGARDMVC_STATIC_URL__', MIDGARDMVC_STATIC_URL, midgardmvc_core::get_instance()->configuration->attachmentserver_placeholder_url);
         $size_line = null;
         if (!is_null($variant))
         {
@@ -287,7 +287,7 @@ class midgardmvc_helper_attachmentserver_helpers
             $size_line = "width='{$variants[$variant]['width']}' height='{$variants[$variant]['height']}'";
             if (isset($variants[$variant]['placeholder_url']))
             {
-                $url = $variants[$variant]['placeholder_url']; 
+                $url = str_replace('__MIDGARDMVC_STATIC_URL__', MIDGARDMVC_STATIC_URL, $variants[$variant]['placeholder_url']); 
             }
         }
         if (is_object($parent))
