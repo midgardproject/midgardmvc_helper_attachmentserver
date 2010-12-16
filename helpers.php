@@ -513,7 +513,10 @@ class midgardmvc_helper_attachmentserver_helpers
     public static function get_as_object($attachment)
     {
         if (   is_object($attachment)
-            && is_a($attachment, 'midgard_attachment'))
+            && (   is_a($attachment, 'midgard_attachment')
+                // For some reason the MgdSchema extends are not placed to class hierachy
+                || is_a($attachment, 'midgardmvc_helper_attachmentserver_attachment'))
+            )
         {
             return $attachment;
         }
