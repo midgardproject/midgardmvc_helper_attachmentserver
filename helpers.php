@@ -286,7 +286,10 @@ class midgardmvc_helper_attachmentserver_helpers
             {
                 throw new midgardmvc_exception("Variant {$variant} is not defined");
             }
-            if (isset($variants[$variant]['scale']))
+            if (   isset($variants[$variant]['scale'])
+                && is_array($variants[$variant]['scale'])
+                && isset($variants[$variant]['scale']['width'])
+                && isset($variants[$variant]['scale']['height']))
             {
                 $size_line = "width='{$variants[$variant]['scale']['width']}' height='{$variants[$variant]['scale']['height']}'";
             }
