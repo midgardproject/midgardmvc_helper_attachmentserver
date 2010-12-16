@@ -245,14 +245,16 @@ class midgardmvc_helper_attachmentserver_helpers
                     }
                     if (!midgardmvc_core::get_instance()->authorization->can_do('midgard:create', $parent_obj))
                     {
-                        return false;
+                        // TODO: switch back to false when we have the TAL macros to use these methods correctly (to check the error status etc)
+                        return null;
                     }
                     // Fall through intentional
                 case true:
                     return midgardmvc_helper_attachmentserver_helpers::render_location_placeholder($parent, $location, $variant);
                     break;
                 case false:
-                    return false;
+                    // TODO: switch back to false when we have the TAL macros to use these methods correctly (to check the error status etc)
+                    return null;
             }
         }
         $extra_info = array('mgd:locationname' => $location);
@@ -284,11 +286,17 @@ class midgardmvc_helper_attachmentserver_helpers
             {
                 throw new midgardmvc_exception("Variant {$variant} is not defined");
             }
-            $size_line = "width='{$variants[$variant]['width']}' height='{$variants[$variant]['height']}'";
+            if (isset($variants[$variant]['scale']))
+            {
+                $size_line = "width='{$variants[$variant]['scale']['width']}' height='{$variants[$variant]['scale']['height']}'";
+            }
+            /**
+             * Actually this might not fit in with the filters config
             if (isset($variants[$variant]['placeholder_url']))
             {
                 $url = str_replace('__MIDGARDMVC_STATIC_URL__', MIDGARDMVC_STATIC_URL, $variants[$variant]['placeholder_url']); 
             }
+             */
         }
         if (is_object($parent))
         {
@@ -327,6 +335,7 @@ class midgardmvc_helper_attachmentserver_helpers
         {
             $size = midgardmvc_helper_attachmentserver_helpers::get_attachment_size($variant_attachment);
         }
+        $extra_info['mgd:variant'] = $variant;
         midgardmvc_helper_attachmentserver_helpers::insert_common_info($attachment_obj, $extra_info);
         $extra_str = midgardmvc_helper_attachmentserver_helpers::encode_to_attributes($extra_info);
         

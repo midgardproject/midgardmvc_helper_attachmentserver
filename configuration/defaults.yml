@@ -3,4 +3,4 @@ attachmentserver_variants:
         scale:
             width: 150
             height: 150
-attachmentserver_placeholder: __MIDGARDMVC_STATIC_URL__/midgardmvc_helper_attachmentserver/placeholder.png
+attachmentserver_placeholder_url: __MIDGARDMVC_STATIC_URL__/midgardmvc_helper_attachmentserver/placeholder.png
