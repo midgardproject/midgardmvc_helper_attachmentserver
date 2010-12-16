@@ -22,7 +22,7 @@ class midgardmvc_helper_attachmentserver_helpers
      * @param boolean $generate_if_missing generate the variant if it does not exist
      * @return object or boolean false
      */
-    public static function get_variant($parent, string $variant, $generate_if_missing = false)
+    public static function get_variant($parent, $variant, $generate_if_missing = false)
     {
         $qb = midgard_attachment::new_query_builder();
         $qb->add_constraint('name', '=', $variant);
@@ -58,7 +58,7 @@ class midgardmvc_helper_attachmentserver_helpers
      * @see midgardmvc_helper_attachmentserver_helpers::get_variant()
      * @see midgardmvc_helper_attachmentserver_helpers::variant_is_fresh()
      */
-    public static function get_fresh_variant($parent, string $variant_name, $generate_if_missing = false)
+    public static function get_fresh_variant($parent, $variant_name, $generate_if_missing = false)
     {
         $variant_obj = midgardmvc_helper_attachmentserver_helpers::get_variant($parent, $variant_name, $generate_if_missing);
         if (!$variant_obj)
@@ -172,7 +172,7 @@ class midgardmvc_helper_attachmentserver_helpers
      * @param string $location the locationname
      * @return object or boolean false
      */
-    public static function get_by_locationname($parent, string $location)
+    public static function get_by_locationname($parent, $location)
     {
         $qb = midgardmvc_helper_attachmentserver_attachment::new_query_builder();
         $qb->add_constraint('locationname', '=', $location);
@@ -204,7 +204,7 @@ class midgardmvc_helper_attachmentserver_helpers
      * @see midgardmvc_helper_attachmentserver_helpers::get_by_locationname()
      * @see midgardmvc_helper_attachmentserver_helpers::get_variant()
      */
-    public static function get_variant_by_locationname($parent, string $location, string $variant, $generate_if_missing = false)
+    public static function get_variant_by_locationname($parent, $location, $variant, $generate_if_missing = false)
     {
         $parent_att = midgardmvc_helper_attachmentserver_helpers::get_by_locationname($parent, $location);
         if (!$parent_att)
@@ -227,7 +227,7 @@ class midgardmvc_helper_attachmentserver_helpers
      * @see midgardmvc_helper_attachmentserver_helpers::get_by_locationname()
      * @see midgardmvc_helper_attachmentserver_helpers::get_variant()
      */
-    public static function render_location_image($parent, string $location, $variant = null,  $generate_if_missing = true, $placeholder = 'auto')
+    public static function render_location_image($parent, $location, $variant = null,  $generate_if_missing = true, $placeholder = 'auto')
     {
         $parent_att = midgardmvc_helper_attachmentserver_helpers::get_by_locationname($parent, $location);
         if (!$parent_att)
@@ -272,7 +272,7 @@ class midgardmvc_helper_attachmentserver_helpers
      * @param string $variant (optional) variant to use
      * @see midgardmvc_helper_attachmentserver_helpers::render_location_image()
      */
-    public static function render_location_placeholder($parent, string $location, $variant = null)
+    public static function render_location_placeholder($parent, $location, $variant = null)
     {
         $url = str_replace('__MIDGARDMVC_STATIC_URL__', MIDGARDMVC_STATIC_URL, midgardmvc_core::get_instance()->configuration->attachmentserver_placeholder_url);
         $size_line = null;
@@ -311,16 +311,9 @@ class midgardmvc_helper_attachmentserver_helpers
      * @param array $extra_info array of extra information propertie to set.
      * @return string of img tag or boolean false on failure
      */
-    public static function render_image_variant($attachment, string $variant, $extra_info = array())
+    public static function render_image_variant($attachment, $variant, $extra_info = array())
     {
-        if (is_object($attachment))
-        {
-            $attachment_obj = $attachment;
-        }
-        else
-        {
-            $attachment_obj = new midgard_attachment($attachment);
-        }
+        $attachment_obj = midgardmvc_helper_attachmentserver_helpers::get_as_object($attachment);
         // TODO: How to get the full host url (including prefix) ?
         $url = "/mgd:attachment/{$attachment_obj->guid}/{$variant}/{$attachment_obj->name}";
 
@@ -359,7 +352,7 @@ class midgardmvc_helper_attachmentserver_helpers
      * @param string $variant
      * @see getimagesize()
      */
-    public static function get_variant_size(string $variant)
+    public static function get_variant_size($variant)
     {
         $size = array();
         $variants = midgardmvc_core::get_instance()->configuration->attachmentserver_variants;
@@ -403,6 +396,26 @@ class midgardmvc_helper_attachmentserver_helpers
     }
 
     /**
+     * Quick helper to return the object we need
+     *
+     * @param mixed $attachment either midgard_object object or guid 
+     * @return midgard_attachment
+     */
+    public static function get_as_object($attachment)
+    {
+        if (   is_object($attachment)
+            && is_a($attachment, 'midgard_attachment'))
+        {
+            return $attachment;
+        }
+        if (!mgd_is_guid($attachment))
+        {
+            throw new midgardmvc_exception("Given argument '{$attachment}' is neither object or GUID");
+        }
+        return new midgard_attachment($attachment);
+    }
+
+    /**
      * Render IMG tag for given attachment
      *
      * @param mixed $attachment either midgard_object object or guid 
@@ -411,14 +424,7 @@ class midgardmvc_helper_attachmentserver_helpers
      */
     public static function render_image($attachment, $extra_info = array())
     {
-        if (is_object($attachment))
-        {
-            $attachment_obj = $attachment;
-        }
-        else
-        {
-            $attachment_obj = new midgard_attachment($attachment);
-        }
+        $attachment_obj = midgardmvc_helper_attachmentserver_helpers::get_as_object($attachment);
         
         // TODO: How to get the full host url (including prefix) ?
         $url = "/mgd:attachment/{$attachment_obj->guid}/{$attachment_obj->name}";
