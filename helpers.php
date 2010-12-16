@@ -339,6 +339,7 @@ class midgardmvc_helper_attachmentserver_helpers
      */
     public static function copy_file_to_attachment($file, &$attachment)
     {
+        // PONDER user PHPs copy() instead (but what if the BLOB is not in the filesystem?)
         $blob = midgardmvc_helper_attachmentserver_helpers::get_blob($attachment);
         $src = fopen($file, 'rb');
         $dst = $blob->get_handler('wb');
@@ -355,6 +356,7 @@ class midgardmvc_helper_attachmentserver_helpers
      */
     public static function copy_attachment_to_file(&$attachment, $file)
     {
+        // PONDER user PHPs copy() instead (but what if the BLOB is not in the filesystem?)
         $blob = midgardmvc_helper_attachmentserver_helpers::get_blob($attachment);
         $src = $blob->get_handler('rb');
         $dst = fopen($file, 'wb');

@@ -71,9 +71,10 @@ abstract class midgardmvc_helper_attachmentserver_controllers_base
         }
         else
         {
+            // TODO: Investigate ways to pass the file info in smaller chunks and outside of the output buffer (think 100MB files...)
             echo $blob->read_content();
             /*
-            $stream = $blob->get_handler('rb');
+            //$stream = $blob->get_handler('rb');
             $stream->rewind();
             fpassthru($stream);
             */
