@@ -97,14 +97,14 @@ class midgardmvc_helper_attachmentserver_helpers
     /**
      * Gets a named variant of parent attachment
      *
-     * @param object $parent midgard_attachment (or subclass thereof) object
+     * @param object $original midgard_attachment (or subclass thereof) object
      * @param string $variant the variant name
      * @param boolean $force_regenerate renegeare variant instead of throwing error for existing variant
      * @return object (or will throw exception)
      */
-    public static function generate_variant(midgard_attachment $parent, $variant, $force_regenerate = false)
+    public static function generate_variant(midgard_attachment $original, $variant, $force_regenerate = false)
     {
-        $old_variant = midgardmvc_helper_attachmentserver_helpers::get_variant($parent, $variant);
+        $old_variant = midgardmvc_helper_attachmentserver_helpers::get_variant($original, $variant);
         if ($old_variant !== false)
         {
             if (!$force_regenerate)
@@ -134,7 +134,16 @@ class midgardmvc_helper_attachmentserver_helpers
         {
             throw new midgardmvc_exception("Variant {$variant} is not defined");
         }
-        
+
+        $original_blob = midgardmvc_helper_attachmentserver_helpers::get_blob($original);
+        if (empty($original->mimetype))
+        {
+            $original->mimetype = midgardmvc_helper_attachmentserver_helpers::resolve_mime_type($original_blob->get_path());
+            midgardmvc_core::get_instance()->authorization->enter_sudo('midgardmvc_helper_attachmentserver');
+            $original->update();
+            midgardmvc_core::get_instance()->authorization->leave_sudo();
+        }
+
         $filters = array();
         foreach ($variants[$variant] as $filter => $options)
         {
@@ -142,7 +151,6 @@ class midgardmvc_helper_attachmentserver_helpers
         }
         $converter->createTransformation($variant, $filters, array($original->mimetype));
 
-        $original_blob = new midgard_blob($original);
         $transformed_image = tempnam(sys_get_temp_dir(), "{$original->guid}_{$variant}");
         $converter->transform
         (
@@ -155,11 +163,13 @@ class midgardmvc_helper_attachmentserver_helpers
 
         // Create a child attachment and copy the transformed image there
         $attachment = $original->create_attachment($variant, $original->title, $original->mimetype);
-        $attachment_blob = new midgard_blob($attachment);
-        $handler = $attachment_blob->get_handler();
-        fwrite($handler, file_get_contents($transformed_image));
-        fclose($handler);
-        $attachment->update();
+        if (is_null($attachment))
+        {
+            throw new midgardmvc_exception("\$original->create_attachment('{$variant}', '{$original->title}', '{$original->mimetype}') failed");
+        }
+        
+        midgardmvc_helper_attachmentserver_helpers::copy_file_to_attachment($transformed_image, $attachment);
+        unlink($transformed_image);
 
         midgardmvc_core::get_instance()->authorization->leave_sudo();
         return $attachment;
@@ -260,9 +270,9 @@ class midgardmvc_helper_attachmentserver_helpers
         $extra_info = array('mgd:locationname' => $location);
         if ($variant)
         {
-            return midgardmvc_helper_attachmentserver_helpers::render_image_variant($parent_att, $variant, $exta_info);
+            return midgardmvc_helper_attachmentserver_helpers::render_image_variant($parent_att, $variant, $extra_info);
         }
-        return midgardmvc_helper_attachmentserver_helpers::render_image($parent_att, $exta_info);
+        return midgardmvc_helper_attachmentserver_helpers::render_image($parent_att, $extra_info);
 
     }
 
@@ -278,28 +288,12 @@ class midgardmvc_helper_attachmentserver_helpers
     {
         $url = str_replace('__MIDGARDMVC_STATIC_URL__', MIDGARDMVC_STATIC_URL, midgardmvc_core::get_instance()->configuration->attachmentserver_placeholder_url);
         $size_line = null;
+        $extra_str = null;
         if (!is_null($variant))
         {
-            // Fetch the variant config to get dimensions
-            $variants = midgardmvc_core::get_instance()->configuration->attachmentserver_variants;
-            if (!isset($variants[$variant]))
-            {
-                throw new midgardmvc_exception("Variant {$variant} is not defined");
-            }
-            if (   isset($variants[$variant]['scale'])
-                && is_array($variants[$variant]['scale'])
-                && isset($variants[$variant]['scale']['width'])
-                && isset($variants[$variant]['scale']['height']))
-            {
-                $size_line = "width='{$variants[$variant]['scale']['width']}' height='{$variants[$variant]['scale']['height']}'";
-            }
-            /**
-             * Actually this might not fit in with the filters config
-            if (isset($variants[$variant]['placeholder_url']))
-            {
-                $url = str_replace('__MIDGARDMVC_STATIC_URL__', MIDGARDMVC_STATIC_URL, $variants[$variant]['placeholder_url']); 
-            }
-             */
+            $size = midgardmvc_helper_attachmentserver_helpers::get_variant_size($variant);
+            $size_line = $size[3];
+            $extra_str = midgardmvc_helper_attachmentserver_helpers::encode_to_attributes(array('mgd:variant' => $variant));
         }
         if (is_object($parent))
         {
@@ -311,7 +305,101 @@ class midgardmvc_helper_attachmentserver_helpers
         }
         // PONDER: is the typeof redundant (or wrong) ?
         // TODO: Better way to mark this is placeholder to be actioned on
-        return "<img src='{$url}' {$size_line} mgd:parentguid='{$parent_guid}' mgd:locationname='{$location}' typeof='http://purl.org/dc/dcmitype/Image' mgd:placeholder='true' />";
+        return "<img src='{$url}' {$size_line} {$extra_str} mgd:parentguid='{$parent_guid}' mgd:locationname='{$location}' typeof='http://purl.org/dc/dcmitype/Image' mgd:placeholder='true' />";
+    }
+
+    /**
+     * Copies file pointer contents in a stream
+     *
+     * @param pointer $src source pointer
+     * @param pointer $dst destination pointer
+     * @param boolean $close close the pointers when done
+     */
+    public static function file_pointer_copy($src, $dst, $close=true)
+    {
+        while (! feof($src))
+        {
+            $buffer = fread($src, 131072); /* 128 kB */
+            fwrite($dst, $buffer, 131072);
+        }
+        if ($close)
+        {
+            fclose($src);
+            fclose($dst);
+        }
+        return true;
+    }
+
+    /**
+     * Copy given file contents to given attachment
+     *
+     * @param string $file file path
+     * @param midgard_attachment $attachment attachment
+     * @param boolean $close close the pointers when done
+     */
+    public static function copy_file_to_attachment($file, &$attachment)
+    {
+        $blob = midgardmvc_helper_attachmentserver_helpers::get_blob($attachment);
+        $src = fopen($file, 'rb');
+        $dst = $blob->get_handler('wb');
+        midgardmvc_helper_attachmentserver_helpers::file_pointer_copy($src, $dst, true);
+        $attachment->update();
+    }
+
+    /**
+     * Copy given attachment contents to given file
+     *
+     * @param string $file file path
+     * @param midgard_attachment $attachment attachment
+     * @param boolean $close close the pointers when done
+     */
+    public static function copy_attachment_to_file(&$attachment, $file)
+    {
+        $blob = midgardmvc_helper_attachmentserver_helpers::get_blob($attachment);
+        $src = $blob->get_handler('rb');
+        $dst = fopen($file, 'wb');
+        return midgardmvc_helper_attachmentserver_helpers::file_pointer_copy($src, $dst, true);
+    }
+
+    /**
+     * Wrapper to various approaches for resolving the file mimetype
+     *
+     * @param string $file_path path to file
+     * @return string mimetype
+     */
+    public static function resolve_mime_type($file_path)
+    {
+        if (function_exists('mime_content_type'))
+        {
+            $mtype = mime_content_type($file_path);
+            if (!empty($mtype))
+            {
+                return $mtype;
+            }
+        }
+        if (function_exists('finfo_file'))
+        {
+            $finfo = finfo_open(FILEINFO_MIME);
+            $mtype = finfo_file($finfo, $file_path);
+            finfo_close($finfo);
+            unset($finfo);
+            if (!empty($mtype))
+            {
+                return $mtype;
+            }
+        }
+
+        // Finally fall back to getimagesize (that will not work for non-images)
+        $info = @getimagesize($file_path);
+        if (   is_array($info)
+            && isset($info[2])
+            && !empty($info[2]))
+        {
+            return $info[2];
+        }
+
+        // Fallback
+        return 'application/force-download';
     }
 
     /**
@@ -354,7 +442,7 @@ class midgardmvc_helper_attachmentserver_helpers
      */
     public static function get_attachment_size(midgard_attachment $attachment_obj)
     {
-        $attachment_blob = new midgard_blob($attachment_obj);
+        $attachment_blob = midgardmvc_helper_attachmentserver_helpers::get_blob($attachment_obj);
         return getimagesize($attachment_blob->get_path());
     }
 
@@ -372,10 +460,17 @@ class midgardmvc_helper_attachmentserver_helpers
         {
             throw new midgardmvc_exception("Variant {$variant} is not defined");
         }
-        $size[0] = $variants[$variant]['width'];
-        $size[1] = $variants[$variant]['height'];
+        if (   !isset($variants[$variant]['scale'])
+            || !is_array($variants[$variant]['scale'])
+            || !isset($variants[$variant]['scale']['width'])
+            || !isset($variants[$variant]['scale']['height']))
+        {
+            throw new midgardmvc_exception("Variant {$variant} does not define scale");
+        }
+        $size[0] = $variants[$variant]['scale']['width'];
+        $size[1] = $variants[$variant]['scale']['height'];
         $size[2] = null; // We don't know/care
-        $size[3] = "width='{$variants[$variant]['width']}' height='{$variants[$variant]['height']}'";
+        $size[3] = "width='{$variants[$variant]['scale']['width']}' height='{$variants[$variant]['scale']['height']}'";
         return $size;
     }
 
@@ -425,6 +520,22 @@ class midgardmvc_helper_attachmentserver_helpers
             throw new midgardmvc_exception("Given argument '{$attachment}' is neither object or GUID");
         }
         return new midgard_attachment($attachment);
+    }
+
+    /**
+     * Quick helper to return the object we need
+     *
+     * @param mixed $attachment either midgard_object object or guid 
+     * @return midgard_attachment
+     */
+    public static function get_blob($attachment)
+    {
+        if (is_a($attachment, 'midgardmvc_helper_attachmentserver_attachment'))
+        {
+            $use_attachment = new midgard_attachment($attachment->guid);
+            return new midgard_blob($use_attachment);
+        }
+        return new midgard_blob($attachment);
     }
 
     /**

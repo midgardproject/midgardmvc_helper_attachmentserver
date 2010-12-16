@@ -26,7 +26,7 @@ abstract class midgardmvc_helper_attachmentserver_controllers_base
             midgardmvc_core::get_instance()->head->relocate(midgardmvc_core_helpers_attachment::get_url($att));
         }
 
-        $blob = new midgard_blob($att);
+        $blob = midgardmvc_helper_attachmentserver_helpers::get_blob($att);
         $stream = $blob->get_handler('rb');
         $mtime = $att->metadata->revised->format('r');
 
@@ -49,6 +49,15 @@ abstract class midgardmvc_helper_attachmentserver_controllers_base
             throw new midgardmvc_exception_httperror("Not modified since {$mtime}", 304);
         }
 
+        // Safety for broken mimetypes        
+        if (empty($att->mimetype))
+        {
+            $att->mimetype = midgardmvc_helper_attachmentserver_helpers::resolve_mime_type($blob->get_path());
+            midgardmvc_core::get_instance()->authorization->enter_sudo('midgardmvc_helper_attachmentserver');
+            $att->update();
+            midgardmvc_core::get_instance()->authorization->leave_sudo();
+        }
+
         midgardmvc_core::get_instance()->dispatcher->header('Content-type: '.$att->mimetype);
         midgardmvc_core::get_instance()->dispatcher->header('ETag: '.$etag);
         midgardmvc_core::get_instance()->dispatcher->header('Last-Modified: '.$mtime);
@@ -63,6 +72,11 @@ abstract class midgardmvc_helper_attachmentserver_controllers_base
         else
         {
             echo $blob->read_content();
+            /*
+            $stream = $blob->get_handler('rb');
+            $stream->rewind();
+            fpassthru($stream);
+            */
         }
         midgardmvc_core::get_instance()->dispatcher->end_request();
     }

@@ -14,3 +14,9 @@ routes:
         controller: midgardmvc_helper_attachmentserver_controllers_variant
         action: variant
         root_only: true
+    attachmentserver_upload:
+        method: 'post'
+        path: '/mgd:attachment/upload/'
+        controller: midgardmvc_helper_attachmentserver_controllers_upload
+        action: upload
+        root_only: true
