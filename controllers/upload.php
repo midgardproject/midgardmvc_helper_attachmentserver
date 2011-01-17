@@ -69,21 +69,6 @@ class midgardmvc_helper_attachmentserver_controllers_upload extends midgardmvc_h
             $attachment = midgardmvc_helper_attachmentserver_helpers::get_by_locationname($parent, $_POST['locationname']);
             if (!$attachment)
             {
-                /**
-                 * It seems we can't use the location like this
-                 *
-                $attachment = midgardmvc_helper_attachmentserver_attachment($attachment->guid)
-                $attachment = new midgardmvc_helper_attachmentserver_attachment();
-                $attachment->parentguid = $parent->guid;
-                $attachment->locationname = $_POST['locationname'];
-                // Also the location is not md5 but sha1 or somesuch
-                $random = md5($parent->guid . $_POST['locationname'] . base_convert(mt_rand(0, (PHP_INT_MAX / 36)), 10, 36));
-                $attachment->location = "{$random[0]}/{$random[1]}/{$random}";
-                $attachment->title = $title;
-                $attachment->name = $file['name'];
-                $attachment->mimetype = $file['type'];
-                $attachment->create();
-                 */
                 // Workaround
                 $attachment = $parent->create_attachment($file['name'], $title, $file['type']);
                 if (is_null($attachment))
@@ -91,7 +76,7 @@ class midgardmvc_helper_attachmentserver_controllers_upload extends midgardmvc_h
                     throw new midgardmvc_exception("\$parent->create_attachment('{$file['name']}', '{$title}', '{$file['type']}') failed");
                 }
                 $attachment_ext = new midgardmvc_helper_attachmentserver_attachment($attachment->guid);
-                $attachment_ext->locationname = $_POST['locationname']; // update will be called later
+                $attachment_ext->locationname = $_POST['locationname'];
                 $attachment_ext->update();
             }
         }
@@ -110,7 +95,11 @@ class midgardmvc_helper_attachmentserver_controllers_upload extends midgardmvc_h
         }
 
         midgardmvc_helper_attachmentserver_helpers::copy_file_to_attachment($file['tmp_name'], $attachment);
+        $this->handle_result();
+    }
 
+    public function handle_result()
+    {
         if (   isset($_POST['variant'])
             && !empty($_POST['variant']))
         {
