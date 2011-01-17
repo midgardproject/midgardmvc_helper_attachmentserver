@@ -13,6 +13,25 @@
  */
 class midgardmvc_helper_attachmentserver_controllers_upload extends midgardmvc_helper_attachmentserver_controllers_base
 {
+    public $parent = null;
+
+    public function load_parent()
+    {
+        if (   !isset($_POST['parentguid'])
+            || empty($_POST['parentguid']))
+        {
+            throw new midgardmvc_exception("Parent object GUID not defined");
+        }
+        
+        try
+        {
+            $this->parent = midgard_object_class::get_object_by_guid($_POST['parentguid']);
+        }
+        catch (midgard_error_exception $e)
+        {
+            throw new midgardmvc_exception_notfound("Object {$_POST['parentguid']}: " . $e->getMessage());
+        }
+    }
 
     /**
      * Allows upload of new files or update of old ones
@@ -21,11 +40,8 @@ class midgardmvc_helper_attachmentserver_controllers_upload extends midgardmvc_h
      */
     public function post_upload(array $args)
     {
-        if (!isset($_POST['parentguid']))
-        {
-            throw new midgardmvc_exception("Parent object GUID not defined");
-        }
-        $parent = midgard_object_class::get_object_by_guid($_POST['parentguid']);
+        $this->load_parent();
+
         if (!isset($_FILES['file']))
         {
             throw new midgardmvc_exception("No file received");
@@ -37,13 +53,6 @@ class midgardmvc_helper_attachmentserver_controllers_upload extends midgardmvc_h
         {
             throw new midgardmvc_exception("Upload got error code {$file['error']}");
         }
-        
-        /*
-        if (!is_uploaded_file($file['tmp_name']))
-        {
-            throw new midgardmvc_exception("is_uploaded_file() check failed");
-        }
-        */
         
         if (   !isset($file['name'])
             || empty($file['name']))
@@ -66,11 +75,11 @@ class midgardmvc_helper_attachmentserver_controllers_upload extends midgardmvc_h
         if (   isset($_POST['locationname'])
             && !empty($_POST['locationname']))
         {
-            $attachment = midgardmvc_helper_attachmentserver_helpers::get_by_locationname($parent, $_POST['locationname']);
+            $attachment = midgardmvc_helper_attachmentserver_helpers::get_by_locationname($this->parent, $_POST['locationname']);
             if (!$attachment)
             {
                 // Workaround
-                $attachment = $parent->create_attachment($file['name'], $title, $file['type']);
+                $attachment = $this->parent->create_attachment($file['name'], $title, $file['type']);
                 if (is_null($attachment))
                 {
                     throw new midgardmvc_exception("\$parent->create_attachment('{$file['name']}', '{$title}', '{$file['type']}') failed");
@@ -87,7 +96,7 @@ class midgardmvc_helper_attachmentserver_controllers_upload extends midgardmvc_h
         }
         else
         {
-            $attachment = $parent->create_attachment($file['name'], $title, $file['type']);
+            $attachment = $this->parent->create_attachment($file['name'], $title, $file['type']);
             if (is_null($attachment))
             {
                 throw new midgardmvc_exception("\$parent->create_attachment('{$file['name']}', '{$title}', '{$file['type']}') failed");
@@ -95,10 +104,10 @@ class midgardmvc_helper_attachmentserver_controllers_upload extends midgardmvc_h
         }
 
         midgardmvc_helper_attachmentserver_helpers::copy_file_to_attachment($file['tmp_name'], $attachment);
-        $this->handle_result();
+        $this->handle_result($attachment);
     }
 
-    public function handle_result()
+    public function handle_result($attachment)
     {
         if (   isset($_POST['variant'])
             && !empty($_POST['variant']))
