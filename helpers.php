@@ -462,24 +462,41 @@ class midgardmvc_helper_attachmentserver_helpers
         {
             throw new midgardmvc_exception("Variant {$variant} is not defined");
         }
-        if (   !isset($variants[$variant]['scale'])
+        if (   (!isset($variants[$variant]['scale'])
             || !is_array($variants[$variant]['scale'])
             || !isset($variants[$variant]['scale']['width'])
             || !isset($variants[$variant]['scale']['height']))
+            && (!isset($variants[$variant]['scaleExact'])
+            || !is_array($variants[$variant]['scaleExact'])
+            || !isset($variants[$variant]['scaleExact']['width'])
+            || !isset($variants[$variant]['scaleExact']['height'])))
         {
-            throw new midgardmvc_exception("Variant {$variant} does not define scale");
+            throw new midgardmvc_exception("Variant {$variant} does not define scale or scaleExact");
         }
-        $size[0] = $variants[$variant]['scale']['width'];
-        $size[1] = $variants[$variant]['scale']['height'];
-        $size[2] = null; // We don't know/care
-        $size[3] = "width='{$variants[$variant]['scale']['width']}' height='{$variants[$variant]['scale']['height']}'";
+
+        if (isset($variants[$variant]['scale']))
+        {
+            $size[0] = $variants[$variant]['scale']['width'];
+            $size[1] = $variants[$variant]['scale']['height'];
+            $size[2] = null; // We don't know/care
+            $size[3] = "width='{$variants[$variant]['scale']['width']}' height='{$variants[$variant]['scale']['height']}'";
+        }
+
+        if (isset($variants[$variant]['scaleExact']))
+        {
+            $size[0] = $variants[$variant]['scaleExact']['width'];
+            $size[1] = $variants[$variant]['scaleExact']['height'];
+            $size[2] = null; // We don't know/care
+            $size[3] = "width='{$variants[$variant]['scaleExact']['width']}' height='{$variants[$variant]['scaleExact']['height']}'";
+        }
+
         return $size;
     }
 
     /**
      * Inserts the attachment title etc to the extra_info array
      *
-     * @param midgard_attachment $attachment reference to the attachment object 
+     * @param midgard_attachment $attachment reference to the attachment object
      * @param array $extra_info reference to the info array
      */
     public static function insert_common_info(&$attachment_obj, &$extra_info)
