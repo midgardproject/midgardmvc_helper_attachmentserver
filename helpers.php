@@ -444,9 +444,6 @@ class midgardmvc_helper_attachmentserver_helpers
         // TODO: How to get the full host url (including prefix) ?
         $url = "/mgd:attachment/{$attachment_obj->guid}/{$variant}/{$attachment_obj->name}";
 
-        // to be used to set alignment
-        $location = $attachment_obj->location;
-
         // Load size from the variant if it's already created, otherwise use the configured size
         $variant_attachment = midgardmvc_helper_attachmentserver_helpers::get_variant($attachment_obj, $variant, false);
         if (!$variant_attachment)
@@ -462,7 +459,7 @@ class midgardmvc_helper_attachmentserver_helpers
         $extra_str = midgardmvc_helper_attachmentserver_helpers::encode_to_attributes($extra_info);
 
         // PONDER: is the typeof redundant (or wrong) ?
-        return "<img src='{$url}' {$size[3]} {$extra_str} align='{$location}' typeof='http://purl.org/dc/dcmitype/Image' mgd:parentguid='{$attachment_obj->parentguid}' mgd:guid='{$attachment_obj->guid}' />";
+        return "<img src='{$url}' {$size[3]} {$extra_str} typeof='http://purl.org/dc/dcmitype/Image' mgd:parentguid='{$attachment_obj->parentguid}' mgd:guid='{$attachment_obj->guid}' />";
     }
 
     /**
@@ -602,13 +599,13 @@ class midgardmvc_helper_attachmentserver_helpers
 
         // TODO: How to get the full host url (including prefix) ?
         $url = "/mgd:attachment/{$attachment_obj->guid}/{$attachment_obj->name}";
-        $location = $attachment_obj->location;
+
         $size = midgardmvc_helper_attachmentserver_helpers::get_attachment_size($attachment_obj);
         midgardmvc_helper_attachmentserver_helpers::insert_common_info($attachment_obj, $extra_info);
         $extra_str = midgardmvc_helper_attachmentserver_helpers::encode_to_attributes($extra_info);
 
         // PONDER: is the typeof redundant (or wrong) ?
-        return "<img src='{$url}' {$size[3]} {$extra_str} align='{$location}' typeof='http://purl.org/dc/dcmitype/Image' mgd:parentguid='{$attachment_obj->parentguid}' mgd:guid='{$attachment_obj->guid}' />";
+        return "<img src='{$url}' {$size[3]} {$extra_str} typeof='http://purl.org/dc/dcmitype/Image' mgd:parentguid='{$attachment_obj->parentguid}' mgd:guid='{$attachment_obj->guid}' />";
     }
 
 }
