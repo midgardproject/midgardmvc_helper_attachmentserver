@@ -155,8 +155,8 @@ class midgardmvc_helper_attachmentserver_helpers
         $converter->transform
         (
             $variant,
-            $original_blob->get_path(), 
-            $transformed_image 
+            $original_blob->get_path(),
+            $transformed_image
         );
 
         midgardmvc_core::get_instance()->authorization->enter_sudo('midgardmvc_helper_attachmentserver');
@@ -167,7 +167,7 @@ class midgardmvc_helper_attachmentserver_helpers
         {
             throw new midgardmvc_exception("\$original->create_attachment('{$variant}', '{$original->title}', '{$original->mimetype}') failed");
         }
-        
+
         midgardmvc_helper_attachmentserver_helpers::copy_file_to_attachment($transformed_image, $attachment);
         unlink($transformed_image);
 
@@ -184,23 +184,49 @@ class midgardmvc_helper_attachmentserver_helpers
      */
     public static function get_by_locationname($parent, $location)
     {
-        $qb = midgardmvc_helper_attachmentserver_attachment::new_query_builder();
-        $qb->add_constraint('locationname', '=', $location);
+        $storage = new midgard_query_storage('midgardmvc_helper_attachmentserver_attachment');
+        $q = new midgard_query_select($storage);
+
+        $qc = new midgard_query_constraint_group('AND');
+
+        $qc->add_constraint(new midgard_query_constraint(
+            new midgard_query_property('locationname'),
+            '=',
+            new midgard_query_value($location)
+        ));
+
         if (is_object($parent))
         {
-            $qb->add_constraint('parentguid', '=', $parent->guid);
+            $qc->add_constraint(new midgard_query_constraint(
+                new midgard_query_property('parentguid'),
+                '=',
+                new midgard_query_value($parent->guid)
+            ));
         }
         else
         {
-            $qb->add_constraint('parentguid', '=', $parent);
+            $qc->add_constraint(new midgard_query_constraint(
+                new midgard_query_property('parentguid'),
+                '=',
+                new midgard_query_value($parent)
+            ));
         }
-        $qb->set_limit(1);
-        $attachments = $qb->execute();
-        unset($qb);
+
+        $q->set_constraint($qc);
+        $q->execute();
+        $q->set_limit(1);
+
+        $attachments = $q->list_objects();
+
+        unset($q);
+        unset($qc);
+        unset($storage);
+
         if (empty($attachments))
         {
             return false;
         }
+
         return $attachments[0];
     }
 
@@ -407,7 +433,7 @@ class midgardmvc_helper_attachmentserver_helpers
     /**
      * Render IMG tag for given attachment using the variant server
      *
-     * @param mixed $attachment either midgard_object object or guid 
+     * @param mixed $attachment either midgard_object object or guid
      * @param string $variant variant to use
      * @param array $extra_info array of extra information propertie to set.
      * @return string of img tag or boolean false on failure
@@ -431,7 +457,7 @@ class midgardmvc_helper_attachmentserver_helpers
         $extra_info['mgd:variant'] = $variant;
         midgardmvc_helper_attachmentserver_helpers::insert_common_info($attachment_obj, $extra_info);
         $extra_str = midgardmvc_helper_attachmentserver_helpers::encode_to_attributes($extra_info);
-        
+
         // PONDER: is the typeof redundant (or wrong) ?
         return "<img src='{$url}' {$size[3]} {$extra_str} typeof='http://purl.org/dc/dcmitype/Image' mgd:parentguid='{$attachment_obj->parentguid}' mgd:guid='{$attachment_obj->guid}' />";
     }
@@ -439,7 +465,7 @@ class midgardmvc_helper_attachmentserver_helpers
     /**
      * Calls the php getimagesize() for given attachment
      *
-     * @param midgard_attachment $attachment 
+     * @param midgard_attachment $attachment
      * @see getimagesize()
      */
     public static function get_attachment_size(midgard_attachment $attachment_obj)
@@ -524,7 +550,7 @@ class midgardmvc_helper_attachmentserver_helpers
     /**
      * Quick helper to return the object we need
      *
-     * @param mixed $attachment either midgard_object object or guid 
+     * @param mixed $attachment either midgard_object object or guid
      * @return midgard_attachment
      */
     public static function get_as_object($attachment)
@@ -547,7 +573,7 @@ class midgardmvc_helper_attachmentserver_helpers
     /**
      * Quick helper to return the object we need
      *
-     * @param mixed $attachment either midgard_object object or guid 
+     * @param mixed $attachment either midgard_object object or guid
      * @return midgard_attachment
      */
     public static function get_blob($attachment)
@@ -563,14 +589,14 @@ class midgardmvc_helper_attachmentserver_helpers
     /**
      * Render IMG tag for given attachment
      *
-     * @param mixed $attachment either midgard_object object or guid 
+     * @param mixed $attachment either midgard_object object or guid
      * @param array $extra_info array of extra information propertie to set.
      * @return string of img tag or boolean false on failure
      */
     public static function render_image($attachment, $extra_info = array())
     {
         $attachment_obj = midgardmvc_helper_attachmentserver_helpers::get_as_object($attachment);
-        
+
         // TODO: How to get the full host url (including prefix) ?
         $url = "/mgd:attachment/{$attachment_obj->guid}/{$attachment_obj->name}";
 
