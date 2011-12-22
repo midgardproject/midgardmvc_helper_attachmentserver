@@ -1,6 +1,12 @@
+#default variants
 attachmentserver_variants:
     thumbnail:
         scale:
             width: 150
             height: 150
+# in case of an empty attachment we will show this image as a placeholder
 attachmentserver_placeholder_url: __MIDGARDMVC_STATIC_URL__/midgardmvc_helper_attachmentserver/placeholder.png
+# each attachment will be served with the HTTP header "Cache-Control: maxage" set to this value
+# also the Expires HTTP header will be set by adding maxage to the current date
+# value is in seconds (86400 equals to 1 day)
+attachment_maxage: 86400
