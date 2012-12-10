@@ -20,7 +20,14 @@ class midgardmvc_helper_attachmentserver_controllers_simple extends midgardmvc_h
      */
     public function get_file(array $args)
     {
-        $att = new midgard_attachment($args['guid']);
+        try
+        {
+            $att = new midgard_attachment($args['guid']);
+        }
+        catch (midgard_error_exception $e)
+        {
+            throw new midgardmvc_exception_notfound("Attachment not found: " . $e->getMessage());
+        }
 
         $this->serve_attachment($att);
     }

@@ -104,6 +104,15 @@ class midgardmvc_helper_attachmentserver_helpers
      */
     public static function generate_variant(midgard_attachment $original, $variant, $force_regenerate = false)
     {
+        $original_blob = midgardmvc_helper_attachmentserver_helpers::get_blob($original);
+
+        if (! filesize($original_blob->get_path()))
+        {
+            // we can't do much with 0 byte long files
+            midgardmvc_core::get_instance()->log('The blob: ' . $original_blob->get_path() . ' is 0 byte long, can not process it.', 'error');
+            return null;
+        }
+
         $old_variant = midgardmvc_helper_attachmentserver_helpers::get_variant($original, $variant);
         if ($old_variant !== false)
         {
@@ -135,7 +144,6 @@ class midgardmvc_helper_attachmentserver_helpers
             throw new midgardmvc_exception("Variant {$variant} is not defined");
         }
 
-        $original_blob = midgardmvc_helper_attachmentserver_helpers::get_blob($original);
         if (empty($original->mimetype))
         {
             $original->mimetype = midgardmvc_helper_attachmentserver_helpers::resolve_mime_type($original_blob->get_path());
@@ -152,6 +160,7 @@ class midgardmvc_helper_attachmentserver_helpers
         $converter->createTransformation($variant, $filters, array($original->mimetype));
 
         $transformed_image = tempnam(sys_get_temp_dir(), "{$original->guid}_{$variant}");
+
         $converter->transform
         (
             $variant,
